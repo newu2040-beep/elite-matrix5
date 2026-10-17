@@ -1,0 +1,115 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with configuration preferences",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "photoURL": { "type": "string", "maxLength": 1024 },
+        "preferences": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Video project entity holding source and export references",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string", "maxLength": 128 },
+        "ownerUid": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 256 },
+        "sourceObjectPath": { "type": "string", "maxLength": 1024 },
+        "sourceMetadata": { "type": "object" },
+        "thumbnailObjectPath": { "type": "string", "maxLength": 1024 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "deletionStatus": { "type": "string", "enum": ["active", "deleted"] }
+      },
+      "required": ["projectId", "ownerUid", "name"]
+    },
+    "EnhancementJob": {
+      "title": "EnhancementJob",
+      "description": "Asynchronous video processing job",
+      "type": "object",
+      "properties": {
+        "jobId": { "type": "string", "maxLength": 128 },
+        "ownerUid": { "type": "string", "maxLength": 128 },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "sourceObjectPath": { "type": "string", "maxLength": 1024 },
+        "settings": { "type": "object" },
+        "status": {
+          "type": "string",
+          "enum": ["uploading", "queued", "processing", "finalizing", "completed", "failed", "cancelled"]
+        },
+        "stage": { "type": "string", "maxLength": 128 },
+        "progress": { "type": "number" },
+        "errorCode": { "type": "string", "maxLength": 128 },
+        "errorMessage": { "type": "string", "maxLength": 1024 },
+        "retryCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "exportId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["jobId", "ownerUid", "projectId", "status"]
+    },
+    "Export": {
+      "title": "Export",
+      "description": "Finished video export record with verified technical metadata",
+      "type": "object",
+      "properties": {
+        "exportId": { "type": "string", "maxLength": 128 },
+        "ownerUid": { "type": "string", "maxLength": 128 },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "jobId": { "type": "string", "maxLength": 128 },
+        "outputObjectPath": { "type": "string", "maxLength": 1024 },
+        "outputMetadata": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "availabilityStatus": { "type": "string", "enum": ["ready", "processing", "deleted"] }
+      },
+      "required": ["exportId", "ownerUid", "projectId", "jobId", "outputObjectPath"]
+    },
+    "ShareLink": {
+      "title": "ShareLink",
+      "description": "Controlled shareable link for an export",
+      "type": "object",
+      "properties": {
+        "shareId": { "type": "string", "maxLength": 128 },
+        "ownerUid": { "type": "string", "maxLength": 128 },
+        "exportId": { "type": "string", "maxLength": 128 },
+        "accessPolicy": { "type": "string", "enum": ["public", "unlisted", "restricted"] },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "revokedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["shareId", "ownerUid", "exportId", "accessPolicy"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile collection isolated per authenticated user"
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Video projects owned by specific user"
+    },
+    "/enhancementJobs/{jobId}": {
+      "schema": { "$ref": "#/entities/EnhancementJob" },
+      "description": "Enhancement job queue and state tracking"
+    },
+    "/exports/{exportId}": {
+      "schema": { "$ref": "#/entities/Export" },
+      "description": "Verified video export records"
+    },
+    "/shareLinks/{shareId}": {
+      "schema": { "$ref": "#/entities/ShareLink" },
+      "description": "Controlled export sharing permissions"
+    }
+  }
+}

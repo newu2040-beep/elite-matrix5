@@ -1,0 +1,119 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Users Collection ---
+    function isValidUser(data) {
+      return data.uid is string && data.uid.size() <= 128 &&
+             data.email is string && data.email.size() <= 256;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.uid == userId;
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) &&
+                      request.resource.data.uid == resource.data.uid;
+      allow delete: if isOwner(userId);
+    }
+
+    // --- Projects Collection ---
+    function isValidProject(data) {
+      return data.projectId is string && data.projectId.size() <= 128 &&
+             data.ownerUid is string && data.ownerUid.size() <= 128 &&
+             data.name is string && data.name.size() <= 256;
+    }
+
+    match /projects/{projectId} {
+      allow get: if isSignedIn() && (resource.data.ownerUid == request.auth.uid);
+      allow list: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(projectId) && isValidProject(request.resource.data) &&
+                      request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(projectId) && isValidProject(request.resource.data) &&
+                      resource.data.ownerUid == request.auth.uid &&
+                      request.resource.data.ownerUid == resource.data.ownerUid &&
+                      request.resource.data.projectId == resource.data.projectId;
+      allow delete: if isSignedIn() && isValidId(projectId) && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // --- Enhancement Jobs Collection ---
+    function isValidJob(data) {
+      return data.jobId is string && data.jobId.size() <= 128 &&
+             data.ownerUid is string && data.ownerUid.size() <= 128 &&
+             data.projectId is string && data.projectId.size() <= 128 &&
+             data.status in ['uploading', 'queued', 'processing', 'finalizing', 'completed', 'failed', 'cancelled'];
+    }
+
+    match /enhancementJobs/{jobId} {
+      allow get: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(jobId) && isValidJob(request.resource.data) &&
+                      request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(jobId) && isValidJob(request.resource.data) &&
+                      resource.data.ownerUid == request.auth.uid &&
+                      request.resource.data.ownerUid == resource.data.ownerUid &&
+                      request.resource.data.jobId == resource.data.jobId;
+      allow delete: if isSignedIn() && isValidId(jobId) && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // --- Exports Collection ---
+    function isValidExport(data) {
+      return data.exportId is string && data.exportId.size() <= 128 &&
+             data.ownerUid is string && data.ownerUid.size() <= 128 &&
+             data.projectId is string && data.projectId.size() <= 128 &&
+             data.jobId is string && data.jobId.size() <= 128 &&
+             data.outputObjectPath is string && data.outputObjectPath.size() <= 1024;
+    }
+
+    match /exports/{exportId} {
+      allow get: if (isSignedIn() && resource.data.ownerUid == request.auth.uid) ||
+                    resource.data.availabilityStatus == 'ready';
+      allow list: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(exportId) && isValidExport(request.resource.data) &&
+                      request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(exportId) && isValidExport(request.resource.data) &&
+                      resource.data.ownerUid == request.auth.uid &&
+                      request.resource.data.ownerUid == resource.data.ownerUid &&
+                      request.resource.data.exportId == resource.data.exportId;
+      allow delete: if isSignedIn() && isValidId(exportId) && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // --- Share Links Collection ---
+    function isValidShareLink(data) {
+      return data.shareId is string && data.shareId.size() <= 128 &&
+             data.ownerUid is string && data.ownerUid.size() <= 128 &&
+             data.exportId is string && data.exportId.size() <= 128 &&
+             data.accessPolicy in ['public', 'unlisted', 'restricted'];
+    }
+
+    match /shareLinks/{shareId} {
+      allow get: if resource.data.accessPolicy in ['public', 'unlisted'] ||
+                    (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+      allow list: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(shareId) && isValidShareLink(request.resource.data) &&
+                      request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(shareId) && isValidShareLink(request.resource.data) &&
+                      resource.data.ownerUid == request.auth.uid &&
+                      request.resource.data.ownerUid == resource.data.ownerUid &&
+                      request.resource.data.shareId == resource.data.shareId;
+      allow delete: if isSignedIn() && isValidId(shareId) && resource.data.ownerUid == request.auth.uid;
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "ELITE MATRIX",
+  "description": "Mobile-first video enhancement studio with 4K upscaling, 60 FPS interpolation, manual video codec tuning, and cloud processing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
